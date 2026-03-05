@@ -9,7 +9,7 @@ from jose import JWTError
 from typing import List
 
 from app.core.database import get_db
-from app.schemas.account import AccountCreate, AccountOut
+from app.schemas.account import AccountCreate, AccountOut, AccountListResponse, AccountUpdate
 from app.crud import account as crud_account
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 bearer_scheme = HTTPBearer()
@@ -26,4 +26,87 @@ def create_account(
     user_id = token_decrypt.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return crud_account.create_account(db, account_in, user_id=UUID(user_id))
+    try: 
+        return crud_account.create_account(db, account_in, user_id=UUID(user_id))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/", response_model=AccountListResponse)
+def list_accounts(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+    status: bool | None = None,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    skip = (page - 1) * limit
+    accounts = crud_account.get_account_paginated(db, user_id=UUID(user_id), skip=skip, limit=limit, search=search, status=status)
+    total_accounts = crud_account.get_account_total(db, user_id=UUID(user_id), search=search, status=status)
+    total_pages = ceil(total_accounts / limit) if total_accounts > 0 else 1
+    return AccountListResponse(
+        data=accounts,
+        next=page < total_pages,
+        previous=page > 1,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+        total=total_accounts
+    )
+@router.get("/{account_id}", response_model=AccountOut)
+def read_account(
+    account_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    account = crud_account.get_account(db, account_id, user_id=UUID(user_id))
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return account
+@router.put("/{account_id}", response_model=AccountOut)
+def update_account(
+    account_id: UUID,
+    account_in: AccountUpdate,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    account = crud_account.update_account(db, account_id, user_id=UUID(user_id), account_in=account_in)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return account
+@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    account_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    success = crud_account.delete_account(db, account_id, user_id=UUID(user_id))
+    if not success:
+        raise HTTPException(status_code=404, detail="Account not found")
