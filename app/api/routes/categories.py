@@ -1,3 +1,4 @@
+from math import ceil
 import token
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,14 +38,68 @@ def read_categories(
     if token_decrypt is None:
         raise HTTPException(status_code=401, detail="Invalid token")
     user_id = token_decrypt.get("user_id")
-    total = crud_categories.get_category_count(db, user_id=UUID(user_id))
+    total = crud_categories.get_category_count(db, user_id=UUID(user_id), search=category_list.search, status=category_list.status)
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
     return CategoryListResponse(
-        data=crud_categories.get_category_paginated(db, user_id=UUID(user_id), skip=(category_list.page - 1) * category_list.limit, limit=category_list.limit),
+        data=crud_categories.get_category_paginated(db, user_id=UUID(user_id), skip=(category_list.page - 1) * category_list.limit, limit=category_list.limit, search=category_list.search, sort_by=category_list.sort_by, direction=category_list.direction, status=category_list.status),
         next=(category_list.page - 1) * category_list.limit + category_list.limit < total,
         previous=category_list.page > 1,
         page=category_list.page,
         limit=category_list.limit,
+        total_pages = ceil(total/category_list.limit) if total > 0 else 1,
         total=total
     )
+@router.get("/{category_id}", response_model=CategoryOut)
+def read_category(
+    category_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    category = crud_categories.get_category(db, category_id=category_id, user_id=UUID(user_id))
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
+@router.put("/{category_id}", response_model=CategoryOut)
+def update_category(
+    category_id: UUID,
+    category_in: CategoryUpdate,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    category = crud_categories.update_category(db, category_id=category_id, category_in=category_in, user_id=UUID(user_id))
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
+@router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    category_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    category = crud_categories.get_category(db, category_id=category_id, user_id=UUID(user_id))
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db.delete(category)
+    db.commit()

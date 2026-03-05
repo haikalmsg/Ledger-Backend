@@ -5,12 +5,29 @@ from pwdlib import PasswordHash
 from app.models.categories import Category
 from app.schemas.categories import CategoryCreate, CategoryUpdate
 
-def get_category_paginated(db: Session, user_id: UUID, skip: int, limit: int) -> list[Category]:
-    return db.query(Category).filter(Category.user_id == user_id).offset(skip).limit(limit).all()
+def get_category_paginated(db: Session, user_id: UUID, skip: int, limit: int, search: str | None = None, sort_by: str | None = None, direction: str = "asc", status: bool | None = None) -> list[Category]:
+    query = db.query(Category).filter(Category.user_id == user_id)
+    if search:
+        query = query.filter(Category.name.ilike(f"%{search}%"))
+    if status is not None:
+        query = query.filter(Category.is_active == status)
+    if sort_by:
+        if direction == "desc":
+            query = query.order_by(getattr(Category, sort_by).desc())
+        else:
+            query = query.order_by(getattr(Category, sort_by))
+    return query.offset(skip).limit(limit).all()
+
 def get_category(db: Session, category_id: UUID, user_id: UUID) -> Category | None:
     return db.query(Category).filter(Category.id == category_id, Category.user_id == user_id).first()
-def get_category_count(db: Session, user_id: UUID) -> int:
-    return db.query(Category).filter(Category.user_id == user_id).count()
+
+def get_category_count(db: Session, user_id: UUID, search: str | None = None, status: bool | None = None) -> int:
+    query = db.query(Category).filter(Category.user_id == user_id)
+    if search:
+        query = query.filter(Category.name.ilike(f"%{search}%"))
+    if status is not None:
+        query = query.filter(Category.is_active == status)
+    return query.count()
 def create_category(db: Session, category_in: CategoryCreate, user_id: UUID) -> Category:
     new_category = Category(
         name=category_in.name,

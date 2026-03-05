@@ -15,12 +15,19 @@ class CategoryUpdate(BaseModel):
 class CategoryListRequest(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=10, ge=1, le=100)
+    search : str | None = Field(default=None, max_length=100)
+    sort_by: str | None = Field(default=None, max_length=50)
+    direction: str = Field(default="asc", pattern="^(asc|desc)$")
+    status: bool | None = None
+
+class CategoryDeleteRequest(BaseModel):
+    id: UUID
+    user_id : UUID
 
 # --- Responses ---
 class CategoryOut(BaseModel):
     id: UUID
     name: str
-    user_id: UUID
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -33,4 +40,5 @@ class CategoryListResponse(BaseModel):
     previous: bool
     page: int
     limit: int
+    total_pages : int
     total: int
