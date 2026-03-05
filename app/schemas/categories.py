@@ -12,6 +12,10 @@ class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
 
+class CategoryListRequest(BaseModel):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=10, ge=1, le=100)
+
 # --- Responses ---
 class CategoryOut(BaseModel):
     id: UUID
