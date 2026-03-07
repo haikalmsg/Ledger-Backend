@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from pwdlib import PasswordHash
 
 from app.models.categories import Category
+from app.crud.users import get_user
 from app.schemas.categories import CategoryCreate, CategoryUpdate
 
 def get_category_paginated(db: Session, user_id: UUID, skip: int, limit: int, search: str | None = None, sort_by: str | None = None, direction: str = "asc", status: bool | None = None) -> list[Category]:

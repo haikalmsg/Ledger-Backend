@@ -1,7 +1,8 @@
-from sqlite3 import IntegrityError
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from pwdlib import PasswordHash
+from fastapi import HTTPException, status
 
 from app.models.account import Account
 from app.schemas.account import AccountCreate, AccountUpdate 
@@ -45,6 +46,7 @@ def create_account(db: Session, account_in: AccountCreate, user_id: UUID) -> Acc
     except Exception:
         db.rollback()
         raise ValueError("An error occurred while creating the account.")
+    
 def update_account(db: Session, account_id : UUID, user_id: UUID, account_in: AccountUpdate) -> Account | None:
     account = get_account(db, account_id, user_id)
     if not account:

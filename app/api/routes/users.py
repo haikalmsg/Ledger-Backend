@@ -55,7 +55,8 @@ def update_user_password(
     user = crud_users.get_user(db, UUID(user_id))
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    # Implementation for updating user password would go here
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     if not password.password:
         raise HTTPException(status_code=400, detail="New password is required")
     if crud_users.verify_password(password.password, user.password_hash):
@@ -78,6 +79,8 @@ def update_user(
     user_id = token_decrypt.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
+    if not crud_users.get_user(db, UUID(user_id)):
+        raise HTTPException(status_code=401, detail="Invalid token")
     updated_user = crud_users.update_user(db, UUID(user_id), user_update)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -93,6 +96,8 @@ def delete_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
     user_id = token_decrypt.get("user_id")
     if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not crud_users.get_user(db, UUID(user_id)):
         raise HTTPException(status_code=401, detail="Invalid token")
     success = crud_users.delete_user(db, UUID(user_id))
     if not success:
