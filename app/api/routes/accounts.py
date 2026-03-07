@@ -9,8 +9,9 @@ from jose import JWTError
 from typing import List
 
 from app.core.database import get_db
-from app.schemas.account import AccountCreate, AccountOut, AccountListResponse, AccountUpdate
+from app.schemas.account import AccountCreate, AccountOut, AccountListResponse, AccountUpdate, AccountBalanceResponse
 from app.crud import account as crud_account
+from app.services import account_service
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 bearer_scheme = HTTPBearer()
 @router.post("/", response_model=AccountOut, status_code=status.HTTP_201_CREATED)
@@ -110,3 +111,23 @@ def delete_account(
     success = crud_account.delete_account(db, account_id, user_id=UUID(user_id))
     if not success:
         raise HTTPException(status_code=404, detail="Account not found")
+
+@router.get("/balance/{account_id}", response_model=AccountBalanceResponse)
+def get_account_balance(
+    account_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    token_decrypt = security.decode_token(token)
+    if token_decrypt is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = token_decrypt.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        balance = account_service.get_account_balance(db, user_id=UUID(user_id), account_id=account_id)
+        return AccountBalanceResponse(account_id=account_id, balance=float(balance))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)
+)

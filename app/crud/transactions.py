@@ -1,8 +1,10 @@
+from decimal import Decimal
 from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from pwdlib import PasswordHash
 from fastapi import HTTPException, status
+from sqlalchemy import func
 
 
 from app.models.transaction import Transaction
@@ -92,3 +94,22 @@ def delete_transaction(db: Session, transaction_id: UUID, user_id: UUID) -> bool
     db.delete(transaction)
     db.commit()
     return True
+
+def get_net_account_transaction_ammount_filtered(db: Session, user_id: UUID, account_id: UUID) -> Decimal | None:
+    try : 
+        income_sum = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+            Transaction.user_id == user_id,
+            Transaction.account_id == account_id,
+            Transaction.kind == "income"
+        ).scalar()
+        expense_sum = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+            Transaction.user_id == user_id,
+            Transaction.account_id == account_id,
+            Transaction.kind == "expense"
+        ).scalar()
+    except Exception:
+        raise ValueError("An error occurred while calculating the net amount.")
+    return Decimal(income_sum - expense_sum)
+
+
+

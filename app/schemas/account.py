@@ -36,3 +36,6 @@ class AccountListResponse(BaseModel):
     limit: int
     total_pages : int
     total: int
+class AccountBalanceResponse(BaseModel):
+    account_id: UUID
+    balance: float
