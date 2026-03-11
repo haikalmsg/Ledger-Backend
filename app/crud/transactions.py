@@ -40,6 +40,7 @@ def create_transaction(db: Session, transaction_in: TransactionCreate, user_id: 
         description=transaction_in.description,
         account_id=transaction_in.account_id,
         category_id=transaction_in.category_id,
+        merchant = transaction_in.merchant,
         user_id=user_id
     )
     try :
