@@ -16,7 +16,7 @@ def get_transaction_by_id(db: Session, transaction_id: UUID, user_id: UUID) -> T
 def get_transaction_paginated(db: Session, user_id: UUID, skip: int, limit: int, search: str | None = None, kind: str | None = None, account_id: UUID | None = None) -> list[Transaction]:
     query = db.query(Transaction).filter(Transaction.user_id == user_id)
     if search:
-        query = query.filter(Transaction.description.contains(search))
+        query = query.filter(Transaction.description.ilike(f"%{search}%"))
     if kind is not None:
         query = query.filter(Transaction.kind == kind)
     if account_id:
@@ -25,7 +25,7 @@ def get_transaction_paginated(db: Session, user_id: UUID, skip: int, limit: int,
 def get_transaction_count(db: Session, user_id: UUID, search: str | None = None, kind : str | None = None, account_id: UUID | None = None) -> int:
     query = db.query(Transaction).filter(Transaction.user_id == user_id)
     if search:
-        query = query.filter(Transaction.description.contains(search))
+        query = query.filter(Transaction.description.ilike(f"%{search}%"))
     if kind is not None:
         query = query.filter(Transaction.kind == kind)
     if account_id:
