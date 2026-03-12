@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 
 from app.models.account import Account
 from app.schemas.account import AccountCreate, AccountUpdate 
+from app.services import account_service
 
 def get_account_paginated(db: Session, user_id: UUID, skip: int, limit: int, search: str | None = None, status: bool | None = None) -> list[Account]:
     query = db.query(Account).filter(Account.user_id == user_id)

@@ -9,7 +9,7 @@ from jose import JWTError
 from typing import List
 
 from app.core.database import get_db
-from app.schemas.account import AccountCreate, AccountOut, AccountListResponse, AccountUpdate, AccountBalanceResponse
+from app.schemas.account import AccountCreate, AccountOut, AccountListResponse, AccountUpdate, AccountBalanceResponse, AccountListRequest
 from app.crud import account as crud_account
 from app.services import account_service
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -33,10 +33,7 @@ def create_account(
         raise HTTPException(status_code=400, detail=str(e))
 @router.get("/", response_model=AccountListResponse)
 def list_accounts(
-    page: int = 1,
-    limit: int = 10,
-    search: str | None = None,
-    status: bool | None = None,
+    accountListRequest : AccountListRequest = Depends(),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ):
@@ -48,18 +45,10 @@ def list_accounts(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
     skip = (page - 1) * limit
-    accounts = crud_account.get_account_paginated(db, user_id=UUID(user_id), skip=skip, limit=limit, search=search, status=status)
-    total_accounts = crud_account.get_account_total(db, user_id=UUID(user_id), search=search, status=status)
-    total_pages = ceil(total_accounts / limit) if total_accounts > 0 else 1
-    return AccountListResponse(
-        data=accounts,
-        next=page < total_pages,
-        previous=page > 1,
-        page=page,
-        limit=limit,
-        total_pages=total_pages,
-        total=total_accounts
-    )
+    list_account = account_service.get_accounts_with_balance(db, user_id=UUID(user_id), AccountListRequest=accountListRequest)
+    if list_account is None :
+        raise HTTPException(status_code = 401, detail= "invalid token")
+    return list_account
 @router.get("/{account_id}", response_model=AccountOut)
 def read_account(
     account_id: UUID,
